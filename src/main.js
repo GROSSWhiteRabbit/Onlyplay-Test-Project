@@ -17,7 +17,8 @@ const Text = PIXI.Text;
 
 
 
-let arr = [[],[],[]],
+let stateGame = 'wait',
+arr = [[],[],[]],
 pictureNow = 'cross',
 players = {
     firstPlayer: {
@@ -30,9 +31,8 @@ players = {
         wins: 0,
         progress:0
     }
-},
+};
 
-end = false;
 
 
 
@@ -67,21 +67,21 @@ winText.visible = false;
 
 
 
-const deadHeatTextStyle = {
+const tieTextStyle = {
     
-    fontSize: 44,
+    fontSize: 72,
     fill: 'rgb(200,0,0)',
     stroke: 'black',
     strokeThickness: 4,
     
 };
-const deadHeatText = new Text( 'dead Heat', deadHeatTextStyle);
+const tieText = new Text( 'Tie', tieTextStyle);
 
 
-deadHeatText.anchor.set(0.5,0.5);
-deadHeatText.x = 150;
-deadHeatText.y = 150;
-deadHeatText.visible = false;
+tieText.anchor.set(0.5,0.5);
+tieText.x = 150;
+tieText.y = 150;
+tieText.visible = false;
 
 
 // text  infoField 
@@ -174,8 +174,13 @@ infoField.addChild(choiceContainer);
 const choiceTitleText = new Text('Ваш выбор:',infoTextStyle);
 choiceTitleText.x = 30;
 choiceTitleText.y = -40;
-
 choiceContainer.addChild(choiceTitleText);
+
+const choiceEndText = new Text('Изменить',{...infoTextStyle, fill: 0x006000});
+choiceEndText.x = 30;
+choiceEndText.y = 80;
+choiceContainer.addChild(choiceEndText);
+
 
 const choicePlayer1 = new Container();
 choiceContainer.addChild(choicePlayer1);
@@ -204,29 +209,36 @@ choicePlayer2.addChild(wrapPicture2);
 
 
 
+//logic
 
-
+choiceContainer.cursor = 'pointer';
 choiceContainer.interactive = true;
 choiceContainer.on('pointerdown', ()=>{
-    const progressFirst = players.firstPlayer.progress;
-    const progressSecond = players.secondPlayer.progress;
-    if(Math.max(progressFirst,progressSecond)===0){
+    if(stateGame === 'ready' || stateGame === 'end' ){
+        togglePicture();
+    }
+
+    function togglePicture(){
         if(players.firstPlayer.picture == 'cross'){
             players.firstPlayer.picture = 'zero';
             players.secondPlayer.picture = 'cross';
+
             wrapPicture1.removeChildren();
             drawZero(wrapPicture1);
             wrapPicture2.removeChildren();
             drawCross(wrapPicture2);
+
             pictureNow = 'zero';
             updateText();
         } else {
             players.firstPlayer.picture = 'cross';
             players.secondPlayer.picture = 'zero';
+
             wrapPicture1.removeChildren();
             drawCross(wrapPicture1);
             wrapPicture2.removeChildren();
             drawZero(wrapPicture2);
+
             pictureNow = 'cross';
             updateText();
 
@@ -239,22 +251,25 @@ choiceContainer.on('pointerdown', ()=>{
 
 
 
-createPlayField(gameField,winText,deadHeatText);
+createPlayField(gameField,winText,tieText);
 
-function createPlayField(box, winText, deadHeatText){
+function createPlayField(box, winText, tieText){
     const gameContainer = new Container();
+    gameContainer.interactive = true;
+    gameContainer.cursor = 'pointer';
     box.addChild(gameContainer);
     box.interactive = false;
     box.addChild(winText);
-    box.addChild(deadHeatText);
+    box.addChild(tieText);
 
-    end = false;
+    stateGame = 'ready';
     arr = [[],[],[]];
     players.firstPlayer.progress = 0;
     players.secondPlayer.progress = 0;
     winText.visible = false;
-    deadHeatText.visible = false;
+    tieText.visible = false;
 
+    onChoice();
     updateText();
 
 
@@ -281,7 +296,10 @@ function createPlayField(box, winText, deadHeatText){
 
             wrappSquare.interactive = true;
             wrappSquare.on('pointerdown', ()=>{
-                console.log('click');
+                if(stateGame != 'end'){
+                    stateGame = 'play';
+                }
+                offChoice();
                 if(arr[i][j]==undefined){
                     if(pictureNow == 'zero'){
                         drawZero(wrappSquare);
@@ -300,20 +318,23 @@ function createPlayField(box, winText, deadHeatText){
 
 
                     }
-                    if(checkWin() && !end){
-                        end = true;
-                        
+                    if(checkWin() && stateGame != 'end'){
+                        stateGame = 'end';
+
                         plusWins();
                         updateText();
+                        onChoice();    
 
                         winText.visible = true;
 
                         box.interactive = true;
                         box.on('pointerdown', restartBox);
 
-                    } else if(checkDeadHeat()){
-                        end = true;
-                        deadHeatText.visible = true;
+                    } else if(checktie()){
+                        stateGame = 'end';
+                        tieText.visible = true;
+
+                        onChoice();
 
                         box.interactive = true;
                         box.on('pointerdown', restartBox);
@@ -327,12 +348,21 @@ function createPlayField(box, winText, deadHeatText){
         }
 
     }
+    function onChoice(){
+        choiceContainer.cursor = 'pointer';
+
+    }
+    function offChoice() {
+        choiceContainer.cursor = 'not-allowed';
+
+    }
     function plusProgress(){
         if(players.firstPlayer.picture === pictureNow){
             players.firstPlayer.progress += 1;
         } else {
             players.secondPlayer.progress += 1;
         }
+
     }
 
     function checkWin(){
@@ -360,7 +390,7 @@ function createPlayField(box, winText, deadHeatText){
         return false;
     }
 
-    function checkDeadHeat(){
+    function checktie(){
         if(players.firstPlayer.progress === 5 || players.secondPlayer.progress === 5){
             return true;
         }
@@ -380,7 +410,7 @@ function createPlayField(box, winText, deadHeatText){
 
     function restartBox(){
         box.removeChild(gameContainer);
-        createPlayField(box,winText,deadHeatText);
+        createPlayField(box,winText,tieText);
         box.off('pointerdown', restartBox);
     }
 }
@@ -394,22 +424,20 @@ function updateText(){
     const progressSecond = players.secondPlayer.progress;
     const progressGeneral = Math.max(progressFirst,progressSecond);
 
-    generalProgress.text = `общие:  ${progressGeneral}`;
-    progressPlayer1.text = `игрок 1: ${progressFirst}`;
-    progressPlayer2.text = `игрок 2: ${progressSecond}`;
+    generalProgress.text = `Общие:  ${progressGeneral}`;
+    progressPlayer1.text = `Игрок 1: ${progressFirst}`;
+    progressPlayer2.text = `Игрок 2: ${progressSecond}`;
 
     if(pictureNow === players.firstPlayer.picture ) {
-        activePlayer.text = `ход: игрок 1 - ${players.firstPlayer.picture}`;
+        activePlayer.text = `Ход: Игрок 1 - ${players.firstPlayer.picture==='cross'?'крестик':'нолик'}`;
     } else {
-        activePlayer.text = `ход: игрок 2 - ${players.secondPlayer.picture}`;
+        activePlayer.text = `Ход: Игрок 2 - ${players.secondPlayer.picture==='cross'?'крестик':'нолик'}`;
 
     }
-        console.log('update');
-    winsPlayer1.text = `игрок 1: ${players.firstPlayer.wins}`;
-    winsPlayer2.text = `игрок 2: ${players.secondPlayer.wins}`;
+    winsPlayer1.text = `Игрок 1: ${players.firstPlayer.wins}`;
+    winsPlayer2.text = `Игрок 2: ${players.secondPlayer.wins}`;
 
 }
-
 
 
 function drawCross(box){
