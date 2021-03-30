@@ -44733,6 +44733,125 @@ module.exports = function(module) {
 
 /***/ }),
 
+/***/ "./src/ai.js":
+/*!*******************!*\
+  !*** ./src/ai.js ***!
+  \*******************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return callAi; });
+
+function callAi(valueArray,squaresArr,picture) {
+
+    const o = picture==='zero'?0:1;
+    const x = picture==='zero'?1:0;
+
+    const arr = [0,1,undefined];
+    const arrsOneStepToVictory  = [[undefined,o,o],[o,undefined,o],[o,o,undefined]];
+    const arrsOutrunTheEnemy  = [[undefined,x,x],[x,undefined,x],[x,x,undefined]];
+    let iIndex, jIndex;
+
+    if(clickUsingPattern(arrsOneStepToVictory)){
+        return;
+    }
+
+    if(clickUsingPattern(arrsOutrunTheEnemy)){
+        return;
+    }
+    
+
+    if(clickTheCenter()){
+        return;
+    }
+
+    clickRandom();
+    
+
+
+    
+    function clickUsingPattern(arrOfArrs) {
+         //Row
+        for(let i=0; i<3; i++){
+            jIndex = findIndexArrayInArrayOfArrays(valueArray[i],arrOfArrs);
+            if(jIndex>=0){
+                iIndex = i;
+                click(iIndex,jIndex);
+                return true;
+            }
+        }
+
+        //Col
+        for(let j=0; j<3; j++){
+            iIndex = findIndexArrayInArrayOfArrays([valueArray[0][j],valueArray[1][j],valueArray[2][j]],arrOfArrs);
+            if(iIndex>=0){
+                jIndex = j;
+                click(iIndex,jIndex);
+                return true;
+            }
+        }
+
+        //diag1
+
+        iIndex = findIndexArrayInArrayOfArrays([valueArray[0][0],valueArray[1][1],valueArray[2][2]],arrOfArrs);
+        if(iIndex>=0){
+            jIndex = iIndex;
+            click(iIndex,jIndex);
+            return true;
+        }
+
+
+        //diag2
+        iIndex = findIndexArrayInArrayOfArrays([valueArray[0][2],valueArray[1][1],valueArray[2][0]],arrOfArrs);
+        if(iIndex>=0){
+            jIndex = 2-iIndex;
+            click(iIndex,jIndex);
+            return true;
+        }
+    }
+
+
+
+    function clickTheCenter(){
+        const value = valueArray[1][1];
+        if(value!=o && value!=x) {
+            click(1,1);
+            return true;
+        } 
+    }
+    
+    function clickRandom(){
+        iIndex = Math.round(2*Math.random());
+        jIndex = Math.round(2*Math.random());
+        const value = valueArray[iIndex][jIndex];
+        if(value!=o && value!=x) {
+            click(iIndex,jIndex);
+        } else {
+            clickRandom();
+        }
+    }
+
+    function findIndexArrayInArrayOfArrays(inputArr, arrOfArrs){
+        const index =  arrOfArrs.findIndex(arr=>compareArrays(arr,inputArr));
+            return index;
+
+
+    }
+
+    function compareArrays(arr1, arr2){
+        return arr1.every((value1, j)=>value1===arr2[j]);
+
+    }
+    function click(i,j) {
+        squaresArr[i][j].emit('pointerdown');
+    }
+}
+
+
+/***/ }),
+
 /***/ "./src/main.js":
 /*!*********************!*\
   !*** ./src/main.js ***!
@@ -44743,6 +44862,8 @@ module.exports = function(module) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! pixi.js */ "./node_modules/pixi.js/dist/esm/pixi.js");
+/* harmony import */ var _ai__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./ai */ "./src/ai.js");
+
 
 
 const app = new pixi_js__WEBPACK_IMPORTED_MODULE_0__["Application"]({
@@ -44760,10 +44881,7 @@ const Text = pixi_js__WEBPACK_IMPORTED_MODULE_0__["Text"];
 
 
 
-
-
 let stateGame = 'wait',
-arr = [[],[],[]],
 pictureNow = 'cross',
 players = {
     firstPlayer: {
@@ -44776,7 +44894,8 @@ players = {
         wins: 0,
         progress:0
     }
-};
+},
+stateAi = false;
 
 
 
@@ -44912,8 +45031,8 @@ winsContainer.y = 60;
 
 const choiceContainer = new Container();
 choiceContainer.y = 250;
-choiceContainer.x = 40;
-
+choiceContainer.x = 70;
+choiceContainer.cursor = 'pointer';
 infoField.addChild(choiceContainer);
 
 const choiceTitleText = new Text('Ваш выбор:',infoTextStyle);
@@ -44954,9 +45073,63 @@ choicePlayer2.addChild(wrapPicture2);
 
 
 
+
+const infoAiContainer = new Container();
+infoAiContainer.y = 285;
+infoAiContainer.cursor = 'pointer';
+
+
+infoField.addChild(infoAiContainer);
+
+const textAi = new Text('AI:', infoTextStyle);
+infoAiContainer.addChild(textAi);
+
+const wrappSquareAi = new Container();
+infoAiContainer.addChild(wrappSquareAi);
+wrappSquareAi.x = 38;
+wrappSquareAi.y = 5;
+wrappSquareAi.scale.set(0.8);
+
+const squareAi = new Graphics();
+squareAi.beginFill(0xe9e9e9);
+squareAi.lineStyle(2);
+squareAi.drawRect(0,0,30,30);
+squareAi.endFill();
+
+wrappSquareAi.addChild(squareAi);
+
+const checkMark = new Graphics();
+checkMark.lineStyle(4);
+checkMark.moveTo(2,15);
+checkMark.lineTo(15,28);
+checkMark.lineTo(34,2);
+checkMark.visible = false;
+wrappSquareAi.addChild(checkMark);
+
+
+
+
+
+
+
 //logic
 
-choiceContainer.cursor = 'pointer';
+infoAiContainer.interactive = true;
+infoAiContainer.on('pointerdown', ()=>{
+    toggleAi();
+
+    function toggleAi(){
+        if(stateAi){
+            stateAi = false;
+            checkMark.visible = false;
+        } else {
+            stateAi = true;
+            checkMark.visible = true;
+
+        }
+    }
+});
+
 choiceContainer.interactive = true;
 choiceContainer.on('pointerdown', ()=>{
     if(stateGame === 'ready' || stateGame === 'end' ){
@@ -45007,14 +45180,18 @@ function createPlayField(box, winText, tieText){
     box.addChild(winText);
     box.addChild(tieText);
 
+    const arr = [[],[],[]];
+    const squaresArr = [[],[],[]];
+
+
     stateGame = 'ready';
-    arr = [[],[],[]];
     players.firstPlayer.progress = 0;
     players.secondPlayer.progress = 0;
     winText.visible = false;
     tieText.visible = false;
+    pictureNow = players.firstPlayer.picture;
 
-    onChoice();
+    choiceOn();
     updateText();
 
 
@@ -45037,6 +45214,7 @@ function createPlayField(box, winText, tieText){
             wrappSquare.addChild(square);
             gameContainer.addChild(wrappSquare);
 
+            squaresArr[i][j] = wrappSquare;
             
 
             wrappSquare.interactive = true;
@@ -45044,7 +45222,7 @@ function createPlayField(box, winText, tieText){
                 if(stateGame != 'end'){
                     stateGame = 'play';
                 }
-                offChoice();
+                choiceOff();
                 if(arr[i][j]==undefined){
                     if(pictureNow == 'zero'){
                         drawZero(wrappSquare);
@@ -45061,14 +45239,13 @@ function createPlayField(box, winText, tieText){
                         pictureNow = 'zero';
                         updateText();
 
-
                     }
                     if(checkWin() && stateGame != 'end'){
                         stateGame = 'end';
 
                         plusWins();
                         updateText();
-                        onChoice();    
+                        choiceOn();    
 
                         winText.visible = true;
 
@@ -45079,28 +45256,33 @@ function createPlayField(box, winText, tieText){
                         stateGame = 'end';
                         tieText.visible = true;
 
-                        onChoice();
+                        choiceOn();
 
                         box.interactive = true;
                         box.on('pointerdown', restartBox);
 
 
                     }
-                    
+
+                    tryUsingAi();
                 }
                 
             });
         }
 
     }
-    function onChoice(){
+    console.log(squaresArr);
+
+    function choiceOn(){
         choiceContainer.cursor = 'pointer';
 
     }
-    function offChoice() {
+
+    function choiceOff() {
         choiceContainer.cursor = 'not-allowed';
 
     }
+
     function plusProgress(){
         if(players.firstPlayer.picture === pictureNow){
             players.firstPlayer.progress += 1;
@@ -45155,8 +45337,16 @@ function createPlayField(box, winText, tieText){
 
     function restartBox(){
         box.removeChild(gameContainer);
+        gameContainer.destroy();
         createPlayField(box,winText,tieText);
         box.off('pointerdown', restartBox);
+    }
+
+    function tryUsingAi(){
+        stateAi &&
+        stateGame != 'end' && 
+        players.secondPlayer.picture === pictureNow &&
+        Object(_ai__WEBPACK_IMPORTED_MODULE_1__["default"])(arr,squaresArr,players.secondPlayer.picture);
     }
 }
 
