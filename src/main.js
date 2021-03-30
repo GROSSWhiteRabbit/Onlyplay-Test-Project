@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js';
+import callAi from './ai';
 
 const app = new PIXI.Application({
     width : 900,
@@ -15,10 +16,7 @@ const Text = PIXI.Text;
 
 
 
-
-
 let stateGame = 'wait',
-arr = [[],[],[]],
 pictureNow = 'cross',
 players = {
     firstPlayer: {
@@ -31,7 +29,8 @@ players = {
         wins: 0,
         progress:0
     }
-};
+},
+stateAi = false;
 
 
 
@@ -167,8 +166,8 @@ winsContainer.y = 60;
 
 const choiceContainer = new Container();
 choiceContainer.y = 250;
-choiceContainer.x = 40;
-
+choiceContainer.x = 70;
+choiceContainer.cursor = 'pointer';
 infoField.addChild(choiceContainer);
 
 const choiceTitleText = new Text('Ваш выбор:',infoTextStyle);
@@ -209,9 +208,63 @@ choicePlayer2.addChild(wrapPicture2);
 
 
 
+
+const infoAiContainer = new Container();
+infoAiContainer.y = 285;
+infoAiContainer.cursor = 'pointer';
+
+
+infoField.addChild(infoAiContainer);
+
+const textAi = new Text('AI:', infoTextStyle);
+infoAiContainer.addChild(textAi);
+
+const wrappSquareAi = new Container();
+infoAiContainer.addChild(wrappSquareAi);
+wrappSquareAi.x = 38;
+wrappSquareAi.y = 5;
+wrappSquareAi.scale.set(0.8);
+
+const squareAi = new Graphics();
+squareAi.beginFill(0xe9e9e9);
+squareAi.lineStyle(2);
+squareAi.drawRect(0,0,30,30);
+squareAi.endFill();
+
+wrappSquareAi.addChild(squareAi);
+
+const checkMark = new Graphics();
+checkMark.lineStyle(4);
+checkMark.moveTo(2,15);
+checkMark.lineTo(15,28);
+checkMark.lineTo(34,2);
+checkMark.visible = false;
+wrappSquareAi.addChild(checkMark);
+
+
+
+
+
+
+
 //logic
 
-choiceContainer.cursor = 'pointer';
+infoAiContainer.interactive = true;
+infoAiContainer.on('pointerdown', ()=>{
+    toggleAi();
+
+    function toggleAi(){
+        if(stateAi){
+            stateAi = false;
+            checkMark.visible = false;
+        } else {
+            stateAi = true;
+            checkMark.visible = true;
+
+        }
+    }
+});
+
 choiceContainer.interactive = true;
 choiceContainer.on('pointerdown', ()=>{
     if(stateGame === 'ready' || stateGame === 'end' ){
@@ -262,14 +315,18 @@ function createPlayField(box, winText, tieText){
     box.addChild(winText);
     box.addChild(tieText);
 
+    const arr = [[],[],[]];
+    const squaresArr = [[],[],[]];
+
+
     stateGame = 'ready';
-    arr = [[],[],[]];
     players.firstPlayer.progress = 0;
     players.secondPlayer.progress = 0;
     winText.visible = false;
     tieText.visible = false;
+    pictureNow = players.firstPlayer.picture;
 
-    onChoice();
+    choiceOn();
     updateText();
 
 
@@ -292,6 +349,7 @@ function createPlayField(box, winText, tieText){
             wrappSquare.addChild(square);
             gameContainer.addChild(wrappSquare);
 
+            squaresArr[i][j] = wrappSquare;
             
 
             wrappSquare.interactive = true;
@@ -299,7 +357,7 @@ function createPlayField(box, winText, tieText){
                 if(stateGame != 'end'){
                     stateGame = 'play';
                 }
-                offChoice();
+                choiceOff();
                 if(arr[i][j]==undefined){
                     if(pictureNow == 'zero'){
                         drawZero(wrappSquare);
@@ -316,14 +374,13 @@ function createPlayField(box, winText, tieText){
                         pictureNow = 'zero';
                         updateText();
 
-
                     }
                     if(checkWin() && stateGame != 'end'){
                         stateGame = 'end';
 
                         plusWins();
                         updateText();
-                        onChoice();    
+                        choiceOn();    
 
                         winText.visible = true;
 
@@ -334,28 +391,33 @@ function createPlayField(box, winText, tieText){
                         stateGame = 'end';
                         tieText.visible = true;
 
-                        onChoice();
+                        choiceOn();
 
                         box.interactive = true;
                         box.on('pointerdown', restartBox);
 
 
                     }
-                    
+
+                    tryUsingAi();
                 }
                 
             });
         }
 
     }
-    function onChoice(){
+    console.log(squaresArr);
+
+    function choiceOn(){
         choiceContainer.cursor = 'pointer';
 
     }
-    function offChoice() {
+
+    function choiceOff() {
         choiceContainer.cursor = 'not-allowed';
 
     }
+
     function plusProgress(){
         if(players.firstPlayer.picture === pictureNow){
             players.firstPlayer.progress += 1;
@@ -410,8 +472,16 @@ function createPlayField(box, winText, tieText){
 
     function restartBox(){
         box.removeChild(gameContainer);
+        gameContainer.destroy();
         createPlayField(box,winText,tieText);
         box.off('pointerdown', restartBox);
+    }
+
+    function tryUsingAi(){
+        stateAi &&
+        stateGame != 'end' && 
+        players.secondPlayer.picture === pictureNow &&
+        callAi(arr,squaresArr,players.secondPlayer.picture);
     }
 }
 
